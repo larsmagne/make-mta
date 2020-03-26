@@ -116,6 +116,10 @@ deny  message = This message scored too many spam points
   spam = Debian-exim:true
   condition = ${if match{$recipients}{learn-spam}{no}{yes}}
   condition = ${if >{$spam_score_int}{49}{yes}{no}}
+
+deny
+  malware = *
+  message = This message was detected as possible malware ($malware_name).
 EOF
     
     service spamassassin restart
