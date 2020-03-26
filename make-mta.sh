@@ -59,7 +59,12 @@ function get-certbot() {
 }
 
 function exim() {
-    apt -y install exim4-daemon-heavy clamav spamassassin clamav-daemon
+    apt -y install exim4-daemon-heavy clamav spamassassin clamav-daemon\
+	sasl2-bin
+    adduser Debian-exim sasl
+    systemctl start saslauthd.service
+    sed -i 's/^START=.*/START=yes/' /etc/default/saslauthd
+    
     cat <<EOF > /etc/exim4/conf.d/main/00_tls_macros
 MAIN_TLS_ENABLE=yes
 MAIN_TLS_PRIVATEKEY=/etc/letsencrypt/live/$host/privkey.pem
@@ -80,8 +85,7 @@ EOF
 plain_server:
   driver = plaintext
   public_name = PLAIN
-  server_condition = "${if crypteq{$auth3}{${extract{1}{:}{${lookup{$auth2}lsea\
-rch{/etc/shadow}{$value}}}}}{1}{0}}"
+  server_condition = ${if saslauthd{{$auth2}{$auth3}}{1}{0}}
   server_set_id = $auth2
   server_prompts = :
   server_advertise_condition = ${if eq{$received_port}{587}{${if eq{$tls_in_cip\
@@ -106,7 +110,6 @@ EOF
     service exim4 restart
 
     adduser Debian-exim mail
-    adduser Debian-exim shadow
     chgrp -R mail /etc/letsencrypt
     chmod -R g+rx /etc/letsencrypt
 
@@ -173,8 +176,8 @@ function dovecot() {
 	 /var/spool/cron/crontabs/root
 }
 
-preinstall
-firewall
+#preinstall
+#firewall
 sethost
 
 echo "Configuring for $host..."
