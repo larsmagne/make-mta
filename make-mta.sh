@@ -35,6 +35,7 @@ function firewall() {
 	sed -isave 's/^#& stop/\& stop/' /etc/rsyslog.d/20-ufw.conf
 	service rsyslog restart
     fi
+    # Make brute forcing less likely.
     apt -y install fail2ban
 }
 
@@ -55,21 +56,28 @@ function get-certbot() {
 	return
     fi
     apt -y install certbot
+    # This will start a standalone http server and get the certificate.
     certbot certonly --standalone -d $host
+    # Renew certificates.
+    echo "10 3 * * 1 certbot renew" >> /var/spool/cron/crontabs/root
 }
 
 function exim() {
     apt -y install exim4-daemon-heavy clamav spamassassin clamav-daemon\
 	sasl2-bin
+    # Allow authentication of submitted mail via the SASL daemon.
     adduser Debian-exim sasl
     sed -i 's/^START=.*/START=yes/' /etc/default/saslauthd
     systemctl start saslauthd.service
-    
+
+    # Use the Let's Encrypt certificates in exim.
     cat <<EOF > /etc/exim4/conf.d/main/00_tls_macros
 MAIN_TLS_ENABLE=yes
 MAIN_TLS_PRIVATEKEY=/etc/letsencrypt/live/$host/privkey.pem
 MAIN_TLS_CERTIFICATE=/etc/letsencrypt/live/$host/fullchain.pem
 EOF
+
+    # Make exim use the split config and be an internet MTA.
     sed -i "s/dc_use_split_config='false'/dc_use_split_config='true'/" \
 	/etc/exim4/update-exim4.conf.conf
     sed -i "s/dc_other_hostnames=.*/dc_other_hostnames='$host:$domain'/" \
@@ -79,8 +87,10 @@ EOF
     sed -i "s/dc_local_interfaces='127.0.0.1 ; ::1'/dc_local_interfaces=''/" \
 	/etc/exim4/update-exim4.conf.conf
 
+    # Add the SMTP submit port.
     echo "daemon_smtp_ports = smtp : 587" > /etc/exim4/conf.d/main/00_ports
 
+    # Allow authentication via SASL.
     cat <<"EOF" > /etc/exim4/conf.d/auth/10_plain_server
 plain_server:
   driver = plaintext
@@ -92,6 +102,7 @@ plain_server:
 her}{}{no}{yes}}}{no}}
 EOF
 
+    # Make exim do virus and spam scanning.
     sed -i 's/# av_scanner/av_scanner/' \
 	/etc/exim4/conf.d/main/02_exim4-config_options
     sed -i 's/# spamd_address/spamd_address/' \
@@ -109,10 +120,10 @@ EOF
     update-exim4.conf
     service exim4 restart
 
+    # Allow exim to read the Let's Encrypt certificates.
     adduser Debian-exim mail
     chgrp -R mail /etc/letsencrypt
     chmod -R g+rx /etc/letsencrypt
-
 }
 
 function dkim() {
@@ -167,6 +178,8 @@ function dovecot() {
 	return
     fi
     apt -y install dovecot-imapd
+
+    # Use the Let's Encrypt certificates.
     sed -i "s#/etc/dovecot/private/dovecot.pem#/etc/letsencrypt/live/$host/fullchain.pem#" /etc/dovecot/conf.d/10-ssl.conf
     sed -i "s#/etc/dovecot/private/dovecot.key#/etc/letsencrypt/live/$host/privkey.pem#" /etc/dovecot/conf.d/10-ssl.conf
     service dovecot restart
@@ -176,8 +189,8 @@ function dovecot() {
 	 /var/spool/cron/crontabs/root
 }
 
-#preinstall
-#firewall
+preinstall
+firewall
 sethost
 
 echo "Configuring for $host..."
