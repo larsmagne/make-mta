@@ -2,6 +2,15 @@
 
 set -e
 
+if [ -d /etc/exim4 ]; then
+    echo "You already seem to have an exim installation.  Running this script"
+    echo -n "may be dangerous.  Continue anyway?  (y/n) "
+    read answer
+    if [ "$answer" != "y" ]; then
+	exit
+    fi
+fi
+
 # Do preliminary pre-MTA stuff.
 function preinstall() {
     echo -n "Do basic system updates? (y/n) "
