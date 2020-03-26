@@ -27,7 +27,8 @@ function firewall() {
     ufw allow imaps
     ufw allow http
     ufw allow https
-    # SMTP submit port.
+    # SMTP submit ports (with SSL and STARTTLS).
+    ufw allow smtps
     ufw allow 587
 
     # Make syslog slightly less noisy.
@@ -87,8 +88,11 @@ EOF
     sed -i "s/dc_local_interfaces='127.0.0.1 ; ::1'/dc_local_interfaces=''/" \
 	/etc/exim4/update-exim4.conf.conf
 
-    # Add the SMTP submit port.
-    echo "daemon_smtp_ports = smtp : 587" > /etc/exim4/conf.d/main/00_ports
+    # Add the SMTP submit ports (TLS and STARTTLS).
+    cat <<EOF > /etc/exim4/conf.d/main/00_ports
+daemon_smtp_ports = smtp : smtps : 587
+tls_on_connect_ports = 465
+EOF
 
     # Allow authentication via SASL.
     cat <<"EOF" > /etc/exim4/conf.d/auth/10_plain_server
@@ -98,8 +102,7 @@ plain_server:
   server_condition = ${if saslauthd{{$auth2}{$auth3}}{1}{0}}
   server_set_id = $auth2
   server_prompts = :
-  server_advertise_condition = ${if eq{$received_port}{587}{${if eq{$tls_in_cip\
-her}{}{no}{yes}}}{no}}
+  server_advertise_condition = ${if eq{$received_port}{587}{${if eq{$tls_in_cipher}{}{no}{yes}}}{${if eq{$received_port}{465}{yes}{no}}}}
 EOF
 
     # Make exim do virus and spam scanning.
