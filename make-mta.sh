@@ -68,7 +68,7 @@ function exim() {
     # Allow authentication of submitted mail via the SASL daemon.
     adduser Debian-exim sasl
     sed -i 's/^START=.*/START=yes/' /etc/default/saslauthd
-    systemctl start saslauthd.service
+    systemctl restart saslauthd.service
 
     # Use the Let's Encrypt certificates in exim.
     cat <<EOF > /etc/exim4/conf.d/main/00_tls_macros
