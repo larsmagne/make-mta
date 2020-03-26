@@ -59,7 +59,7 @@ function certbot() {
 }
 
 function exim() {
-    apt install exim4-daemon-light
+    apt install exim4-daemon-heavy
     cat <<EOF > /etc/exim4/conf.d/main/00_tls_macros
 MAIN_TLS_ENABLE=yes
 MAIN_TLS_PRIVATEKEY=/etc/letsencrypt/live/$host/privkey.pem
@@ -67,7 +67,9 @@ MAIN_TLS_CERTIFICATE=/etc/letsencrypt/live/$host/fullchain.pem
 EOF
     sed -i "s/dc_use_split_config='false'/dc_use_split_config='true'/" \
 	/etc/exim4/update-exim4.conf.conf
-    sed -i "s/dc_relay_domains=''/dc_relay_domains='$domain'/" \
+#    sed -i "s/dc_relay_domains=''/dc_relay_domains='$domain'/" \
+#	/etc/exim4/update-exim4.conf.conf
+    sed -i "s/dc_other_hostnames=.*/dc_other_hostnames='$host:$domain'/" \
 	/etc/exim4/update-exim4.conf.conf
     sed -i "s/dc_eximconfig_configtype='local'/dc_eximconfig_configtype='internet'/" \
 	/etc/exim4/update-exim4.conf.conf
@@ -90,6 +92,11 @@ EOF
     
     update-exim4.conf
     service exim4 restart
+
+    adduser Debian-exim mail
+    adduser Debian-exim shadow
+    chgrp -R mail /etc/letsencrypt
+    chmod -R g+rx /etc/letsencrypt
 }
 
 function dkim() {
@@ -136,6 +143,18 @@ function dns() {
     echo "  $host"
 }
 
+function dovecot() {
+    echo -n "Install Dovecot IMAP? (y/n) "
+    read answer
+    if [ "$answer" != "y" ]; then
+	return
+    fi
+    apt install dovecot-imapd
+    sed -i "s#/etc/dovecot/private/dovecot.pem#/etc/letsencrypt/live/$host/fullchain.pem#" /etc/dovecot/conf.d/10-ssl.conf
+    sed -i "s#/etc/dovecot/private/dovecot.key#/etc/letsencrypt/live/$host/privkey.pem#" /etc/dovecot/conf.d/10-ssl.conf
+    service dovecot restart
+}
+
 #preinstall
 #firewall
 sethost
@@ -147,5 +166,6 @@ domain=$(echo $host | sed 's/^[^.]*[.]//')
 #certbot
 #exim
 #dkim
+#dns
 
-dns
+dovecot
