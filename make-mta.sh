@@ -59,7 +59,7 @@ function certbot() {
 }
 
 function exim() {
-    apt install exim4-daemon-heavy
+    apt install exim4-daemon-heavy clamav spamassassin
     cat <<EOF > /etc/exim4/conf.d/main/00_tls_macros
 MAIN_TLS_ENABLE=yes
 MAIN_TLS_PRIVATEKEY=/etc/letsencrypt/live/$host/privkey.pem
@@ -88,6 +88,18 @@ rch{/etc/shadow}{$value}}}}}{1}{0}}"
   server_prompts = :
   server_advertise_condition = ${if eq{$received_port}{587}{${if eq{$tls_in_cip\
 her}{}{no}{yes}}}{no}}
+EOF
+
+    sed -i 's/# av_scanner/av_scanner/' \
+	/etc/exim4/conf.d/main/02_exim4-config_options
+    sed -i 's/# spamd_address/spamd_address/' \
+	/etc/exim4/conf.d/main/02_exim4-config_options
+
+    cat <<"EOF" > /etc/exim4/conf.d/acl/35_stop_spam
+deny  message = This message scored too many spam points
+  spam = Debian-exim:true
+  condition = ${if match{$recipients}{learn-spam}{no}{yes}}
+  condition = ${if >{$spam_score_int}{49}{yes}{no}}
 EOF
     
     update-exim4.conf
