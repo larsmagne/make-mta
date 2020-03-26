@@ -62,8 +62,8 @@ function exim() {
     apt -y install exim4-daemon-heavy clamav spamassassin clamav-daemon\
 	sasl2-bin
     adduser Debian-exim sasl
-    systemctl start saslauthd.service
     sed -i 's/^START=.*/START=yes/' /etc/default/saslauthd
+    systemctl start saslauthd.service
     
     cat <<EOF > /etc/exim4/conf.d/main/00_tls_macros
 MAIN_TLS_ENABLE=yes
