@@ -10,8 +10,8 @@ function preinstall() {
 	return
     fi
     apt update
-    apt upgrade
-    apt autoremove
+    apt -y upgrade
+    apt -y autoremove
 }
 
 function firewall() {
@@ -20,7 +20,7 @@ function firewall() {
     if [ "$firewall" != "y" ]; then
 	return
     fi
-    apt install ufw
+    apt -y install ufw
     ufw allow ssh
     ufw enable
     ufw allow smtp
@@ -35,7 +35,7 @@ function firewall() {
 	sed -isave 's/^#& stop/\& stop/' /etc/rsyslog.d/20-ufw.conf
 	service rsyslog restart
     fi
-    apt install fail2ban
+    apt -y install fail2ban
 }
 
 function sethost() {
@@ -48,18 +48,18 @@ function sethost() {
     fi
 }
 
-function certbot() {
+function get-certbot() {
     echo -n "Get certificates from Let's Encypt? (y/n) "
     read answer
     if [ "$answer" != "y" ]; then
 	return
     fi
-    apt install certbot
+    apt -y install certbot
     certbot certonly --standalone -d $host
 }
 
 function exim() {
-    apt install exim4-daemon-heavy clamav spamassassin
+    apt -y install exim4-daemon-heavy clamav spamassassin clamav-daemon
     cat <<EOF > /etc/exim4/conf.d/main/00_tls_macros
 MAIN_TLS_ENABLE=yes
 MAIN_TLS_PRIVATEKEY=/etc/letsencrypt/live/$host/privkey.pem
@@ -67,8 +67,6 @@ MAIN_TLS_CERTIFICATE=/etc/letsencrypt/live/$host/fullchain.pem
 EOF
     sed -i "s/dc_use_split_config='false'/dc_use_split_config='true'/" \
 	/etc/exim4/update-exim4.conf.conf
-#    sed -i "s/dc_relay_domains=''/dc_relay_domains='$domain'/" \
-#	/etc/exim4/update-exim4.conf.conf
     sed -i "s/dc_other_hostnames=.*/dc_other_hostnames='$host:$domain'/" \
 	/etc/exim4/update-exim4.conf.conf
     sed -i "s/dc_eximconfig_configtype='local'/dc_eximconfig_configtype='internet'/" \
@@ -102,6 +100,8 @@ deny  message = This message scored too many spam points
   condition = ${if >{$spam_score_int}{49}{yes}{no}}
 EOF
     
+    service spamassassin restart
+
     update-exim4.conf
     service exim4 restart
 
@@ -109,6 +109,7 @@ EOF
     adduser Debian-exim shadow
     chgrp -R mail /etc/letsencrypt
     chmod -R g+rx /etc/letsencrypt
+
 }
 
 function dkim() {
@@ -142,6 +143,7 @@ EOF
 }
 
 function dns() {
+    echo
     echo "Make the following TXT DNS record for $domain"
     echo
     echo "  v=spf1 a mx ~all"
@@ -161,23 +163,27 @@ function dovecot() {
     if [ "$answer" != "y" ]; then
 	return
     fi
-    apt install dovecot-imapd
+    apt -y install dovecot-imapd
     sed -i "s#/etc/dovecot/private/dovecot.pem#/etc/letsencrypt/live/$host/fullchain.pem#" /etc/dovecot/conf.d/10-ssl.conf
     sed -i "s#/etc/dovecot/private/dovecot.key#/etc/letsencrypt/live/$host/privkey.pem#" /etc/dovecot/conf.d/10-ssl.conf
     service dovecot restart
+    # The certificate will change, and dovecot has to reload so that
+    # it doesn't expire.
+    echo "20 3 * * 1 systemctl reload dovecot.service" >> \
+	 /var/spool/cron/crontabs/root
 }
 
-#preinstall
-#firewall
+preinstall
+firewall
 sethost
 
 echo "Configuring for $host..."
 
 domain=$(echo $host | sed 's/^[^.]*[.]//')
 
-#certbot
-#exim
-#dkim
-#dns
-
+get-certbot
+exim
 dovecot
+
+dkim
+dns
