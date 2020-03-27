@@ -123,7 +123,6 @@ EOF
     cat <<"EOF" > /etc/exim4/conf.d/acl/35_stop_spam
 deny  message = This message scored too many spam points
   spam = Debian-exim:true
-  condition = ${if match{$recipients}{learn-spam}{no}{yes}}
   condition = ${if >{$spam_score_int}{49}{yes}{no}}
 
 deny
