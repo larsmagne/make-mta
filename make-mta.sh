@@ -154,7 +154,7 @@ function dkim() {
     chmod g+r "$domain-dkim-private.pem"
     chgrp Debian-exim "$domain-dkim-private.pem"
 
-    selector=$(date +%Y%d%m)
+    selector=$(date +%Y%m%d)
 
     cat <<EOF > conf.d/main/00_dkim_macros
 DKIM_CANON = relaxed
