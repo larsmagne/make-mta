@@ -65,9 +65,22 @@ function get-certbot() {
     if [ "$answer" != "y" ]; then
 	return
     fi
-    apt -y install certbot
-    # This will start a standalone http server and get the certificate.
-    certbot certonly --standalone -d $host
+    apt -y install certbot lsof
+
+    # If we have a web server, then don't use standalone certbot,
+    # because it'll fail.
+    if lsof -i :80 -sTCP:LISTEN > /dev/null; then
+	if lsof -i :80 -sTCP:LISTEN | grep apache > /dev/null; then
+	    apt -y install python-certbot-apache
+	elif lsof -i :80 -sTCP:LISTEN | grep nginx > /dev/null; then
+	    apt -y install python-certbot-nginx
+	fi
+	# Try to use the web server to get certificates.
+	certbot certonly -d $host
+    else
+	# This will start a standalone http server and get the certificate.
+	certbot certonly --standalone -d $host
+    fi
     # Renew certificates.
     echo "10 3 * * 1 certbot renew" >> /var/spool/cron/crontabs/root
 }
