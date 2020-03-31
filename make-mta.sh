@@ -59,6 +59,10 @@ function sethost() {
     fi
 }
 
+function check-web() {
+    lsof -i :80 -sTCP:LISTEN
+}
+
 function get-certbot() {
     echo -n "Get certificates from Let's Encypt? (y/n) "
     read answer
@@ -69,10 +73,10 @@ function get-certbot() {
 
     # If we have a web server, then don't use standalone certbot,
     # because it'll fail.
-    if lsof -i :80 -sTCP:LISTEN > /dev/null; then
-	if lsof -i :80 -sTCP:LISTEN | grep apache > /dev/null; then
+    if check-web > /dev/null; then
+	if check-web | grep apache > /dev/null; then
 	    apt -y install python-certbot-apache
-	elif lsof -i :80 -sTCP:LISTEN | grep nginx > /dev/null; then
+	elif check-web | grep nginx > /dev/null; then
 	    apt -y install python-certbot-nginx
 	fi
 	# Try to use the web server to get certificates.
