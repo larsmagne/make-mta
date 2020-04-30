@@ -137,7 +137,7 @@ EOF
     sed -i 's/# spamd_address/spamd_address/' \
 	/etc/exim4/conf.d/main/02_exim4-config_options
 
-    cat <<"EOF" > /etc/exim4/conf.d/acl/35_stop_spam
+    cat <<"EOF" > /etc/exim4/conf.d/acl/45_stop_spam
 deny  message = This message scored too many spam points
   spam = Debian-exim:true
   condition = ${if >{$spam_score_int}{49}{yes}{no}}
@@ -147,8 +147,12 @@ deny
   message = This message was detected as possible malware ($malware_name).
 EOF
     
+    systemctl enable spamassassin.service
     service spamassassin restart
 
+    # ClamAV needs to be able to access /var/spool/exim4/scan.
+    adduser clamav Debian-exim
+    
     update-exim4.conf
     service exim4 restart
 
