@@ -155,6 +155,18 @@ deny
   malware = *
   message = This message was detected as possible malware ($malware_name).
 EOF
+
+    # The previous elements have to be in the check_data ACL, but that
+    # file ends with "accept", which lets everything through.  So
+    # remove that from that file...
+    sed -i 's/^ *accept/  #accept/' \
+	/etc/exim4/conf.d/acl/40_exim4-config_check_data
+
+    # ... and put it in a separate file.
+    cat <<"EOF" > /etc/exim4/conf.d/acl/55_exim4_check_data_end
+  # accept otherwise
+  accept
+EOF
     
     systemctl enable spamassassin.service
     service spamassassin restart
