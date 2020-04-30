@@ -47,6 +47,15 @@ function firewall() {
     fi
     # Make brute forcing less likely.
     apt -y install fail2ban
+    cat <<EOF > /etc/fail2ban/jail.d/exim.conf
+[exim]
+enabled=true
+EOF
+    cat <<EOF > /etc/fail2ban/jail.d/dovecot.conf
+[dovecot]
+enabled=true
+EOF
+
 }
 
 function sethost() {
