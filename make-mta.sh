@@ -55,7 +55,7 @@ EOF
 [dovecot]
 enabled=true
 EOF
-
+    systemctl restart fail2ban.service
 }
 
 function sethost() {
