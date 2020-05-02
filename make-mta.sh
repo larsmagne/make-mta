@@ -173,6 +173,7 @@ EOF
 
     # ClamAV needs to be able to access /var/spool/exim4/scan.
     adduser clamav Debian-exim
+    systemctl enable clamav-daemon.service
     
     update-exim4.conf
     service exim4 restart
