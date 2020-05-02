@@ -146,14 +146,26 @@ EOF
     sed -i 's/# spamd_address/spamd_address/' \
 	/etc/exim4/conf.d/main/02_exim4-config_options
 
-    cat <<"EOF" > /etc/exim4/conf.d/acl/45_stop_spam
+    # clamav needs about 1GB of memory to run.  If we don't have that,
+    # then don't make exim try to talk to clamav.
+    memory=$(grep MemTotal /proc/meminfo | awk '{print $2}')
+    pref=""
+    if [ "$memory" -gt 1500000 ]; then
+	pref="#"
+	echo "# Commented out because clamav may not be running due to low memory"\
+	     > /etc/exim4/conf.d/acl/45_stop_spam
+    fi
+    cat <<EOF >> /etc/exim4/conf.d/acl/45_stop_spam
+${pref}deny
+${pref}  malware = *
+${pref}  message = This message was detected as possible malware (\$malware_name).
+
+EOF
+    
+    cat <<"EOF" >> /etc/exim4/conf.d/acl/45_stop_spam
 deny  message = This message scored too many spam points
   spam = Debian-exim:true
   condition = ${if >{$spam_score_int}{49}{yes}{no}}
-
-deny
-  malware = *
-  message = This message was detected as possible malware ($malware_name).
 EOF
 
     # The previous elements have to be in the check_data ACL, but that
@@ -173,7 +185,6 @@ EOF
 
     # ClamAV needs to be able to access /var/spool/exim4/scan.
     adduser clamav Debian-exim
-    systemctl enable clamav-daemon.service
     
     update-exim4.conf
     service exim4 restart
