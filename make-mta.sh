@@ -214,7 +214,6 @@ EOF
     
     update-exim4.conf
     service exim4 restart
-    systemctl restart clamav-daemon
 
     # Allow exim to read the Let's Encrypt certificates.
     adduser Debian-exim mail
