@@ -238,7 +238,8 @@ EOF
     grep -v '^-' < "$domain-dkim-public.pem" | tr -d '\n'
     echo
 
-    echo -n "$selector._domainkey.$domain.	1	IN	TXT	\"k=rsa; p=" > $log
+    echo "# This DNS BIND-formatted file can be imported into some DNS providers"
+    echo -n "$selector._domainkey.$domain.	1	IN	TXT	\"k=rsa; p=" >> $log
     grep -v '^-' < "$domain-dkim-public.pem" | tr -d '\n' >> $log
     echo "\"" >> $log
 }
