@@ -2,6 +2,8 @@
 
 set -e
 
+log=/tmp/dns.txt
+
 if [ -d /etc/exim4 ]; then
     echo "You already seem to have an exim installation.  Running this script"
     echo -n "may be dangerous.  Continue anyway?  (y/n) "
@@ -230,10 +232,15 @@ EOF
     update-exim4.conf
     service exim4 reload
 
+    echo
     echo "Make the following TXT DNS record for $selector._domainkey.$domain"
     echo -n "  k=rsa; p="
     grep -v '^-' < "$domain-dkim-public.pem" | tr -d '\n'
     echo
+
+    echo -n "$selector._domainkey.$domain.	1	IN	TXT	\"k=rsa; p=" > $log
+    grep -v '^-' < "$domain-dkim-public.pem" | tr -d '\n' >> $log
+    echo "\"" >> $log
 }
 
 function dns() {
@@ -246,12 +253,20 @@ function dns() {
     echo
     echo "Make the following MX DNS record for $domain"
     echo "  $host"
+
+    
+    echo "$domain.	1	IN	TXT	\"v=spf1 a mx ~all\"" >> $log
+    echo "_dmarc.$domain.	1	IN	TXT	\"v=DMARC1; p=none\"" >> $log
+    echo "$domain.	1	IN	MX	9	$host" >> $log
     if [ "$mta_sts" != "" ]; then
 	echo
 	echo "Make the following TXT DNS record for _mta-sts.$domain"
 	local stamp=$(date -u +"%Y%m%d%H%M%SZ")
 	echo "  v=STSv1; id=$stamp;"
+	echo "_mta-sts.$domain.	1	IN	TXT	\"v=STSv1; id=$stamp;\"" >> $log
     fi
+    echo
+    echo "Domain file for import can be found at $log"
 }
 
 function dovecot() {
