@@ -317,10 +317,6 @@ function mta-sts() {
         SSLCertificateKeyFile /etc/letsencrypt/live/$host/privkey.pem
 </VirtualHost>
 EOF
-	cd /etc/apache2/sites-enabled
-	if [ ! -e 001-mta-sts.conf ]; then
-	    ln -s ../sites-available/001-mta-sts.conf 001-mta-sts.conf
-	fi
     else
 	echo "Unable to determine what web server to use for MTA-STS"
     fi
@@ -338,6 +334,21 @@ EOF
 	
 }
 
+function continue-mta-sts() {
+    if [ "$mta_sts" = "" ]; then
+	return
+    fi
+
+    # We can't enable the mta-sts site before we have the certificates.
+    if check-web | grep apache > /dev/null; then
+	cd /etc/apache2/sites-enabled
+	if [ ! -e 001-mta-sts.conf ]; then
+	    ln -s ../sites-available/001-mta-sts.conf 001-mta-sts.conf
+	fi
+	systemctl restart apache2
+    fi
+}
+
 
 preinstall
 firewall
@@ -349,6 +360,7 @@ domain=$(echo $host | sed 's/^[^.]*[.]//')
 
 mta-sts
 get-certbot
+continue-mta-sts
 exim
 dovecot
 
