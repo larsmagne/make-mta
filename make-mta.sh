@@ -270,7 +270,7 @@ function dns() {
     
     echo "$domain.	1	IN	TXT	\"v=spf1 a mx ~all\"" >> $log
     echo "_dmarc.$domain.	1	IN	TXT	\"v=DMARC1; p=none\"" >> $log
-    echo "$domain.	1	IN	MX	9	$host" >> $log
+    echo "$domain.	1	IN	MX	9	$host." >> $log
     if [ "$mta_sts" != "" ]; then
 	echo
 	echo "Make the following TXT DNS record for _mta-sts.$domain"
