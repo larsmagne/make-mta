@@ -1,0 +1,14 @@
+The repository has only one file -- make-mta.sh, which will install
+everything you need to run your own mail server.
+
+It has been tested on Ubuntu 18.04 and 20.04 LTS, and should probably
+run more or less as is on other Debian-derived systems.
+
+It is recommended that the script is only run on a fresh,
+newly-installed machine.  The testing has been done on a 2GB virtual
+machine at DigitalOcean.
+
+For a background to why this script exists, see:
+
+https://lars.ingebrigtsen.no/2020/03/25/so-you-want-to-run-your-own-mail-server/
+
