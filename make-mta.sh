@@ -323,7 +323,7 @@ EOF
 version: STSv1
 mode: enforce
 mx: $host
-max_age: 604800
+max_age: 1209600
 EOF
 	
 }
