@@ -231,7 +231,6 @@ EOF
     service exim4 reload
 
     echo "Make the following TXT DNS record for $selector._domainkey.$domain"
-    echo
     echo -n "  k=rsa; p="
     grep -v '^-' < "$domain-dkim-public.pem" | tr -d '\n'
     echo
@@ -240,20 +239,16 @@ EOF
 function dns() {
     echo
     echo "Make the following TXT DNS record for $domain"
-    echo
     echo "  v=spf1 a mx ~all"
     echo
     echo "Make the following TXT DNS record for _dmarc.$domain"
-    echo
     echo "  v=DMARC1; p=none"
     echo
     echo "Make the following MX DNS record for $domain"
-    echo
     echo "  $host"
     if [ "$mta_sts" != "" ]; then
 	echo
 	echo "Make the following TXT DNS record for _mta-sts.$domain"
-	echo
 	local stamp=$(date -u +"%Y%m%d%H%M%SZ")
 	echo "  v=STSv1; id=$stamp;"
     fi
@@ -287,7 +282,6 @@ function mta-sts() {
 
     if ! getent hosts mta-sts.$domain; then
 	echo "Make the following CNAME DNS record for mta-sts.$domain"
-	echo
 	echo "  $host"
 	echo
 	echo "Press Enter to continue"
