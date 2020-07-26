@@ -80,6 +80,12 @@ function get-certbot() {
     fi
     apt -y install certbot lsof
 
+    # If we're using MTA-STS, then get the certificate for that domain, too.
+    local hosts="-d $host"
+    if [ "$mta_sts" != "" ]; then
+	hosts="-d $host -d mta-sts.$domain"
+    fi
+    
     # If we have a web server, then don't use standalone certbot,
     # because it'll fail.
     if check-web > /dev/null; then
@@ -89,10 +95,16 @@ function get-certbot() {
 	    apt -y install python-certbot-nginx
 	fi
 	# Try to use the web server to get certificates.
-	certbot certonly -d $host
+	certbot certonly $hosts
+
+	# If we're using Apache, then restart it to start using the
+	# new certificates -- especially when adding an MTA-STS domain.
+	if check-web | grep apache > /dev/null; then
+	    systemctl restart apache2
+	fi
     else
 	# This will start a standalone http server and get the certificate.
-	certbot certonly --standalone -d $host
+	certbot certonly --standalone $hosts
     fi
     # Renew certificates.
     echo "10 3 * * 1 certbot renew" >> /var/spool/cron/crontabs/root
@@ -207,7 +219,7 @@ function dkim() {
     chmod g+r "$domain-dkim-private.pem"
     chgrp Debian-exim "$domain-dkim-private.pem"
 
-    selector=$(date +%Y%m%d)
+    local selector=$(date +%Y%m%d)
 
     cat <<EOF > conf.d/main/00_dkim_macros
 DKIM_CANON = relaxed
@@ -238,6 +250,13 @@ function dns() {
     echo "Make the following MX DNS record for $domain"
     echo
     echo "  $host"
+    if [ "$mta_sts" != "" ]; then
+	echo
+	echo "Make the following TXT DNS record for _mta-sts.$domain"
+	echo
+	local stamp=$(date -u +"%Y%m%d%H%M%SZ")
+	echo "  v=STSv1; id=$stamp;"
+    fi
 }
 
 function dovecot() {
@@ -258,6 +277,68 @@ function dovecot() {
 	 /var/spool/cron/crontabs/root
 }
 
+function mta-sts() {
+    echo -n "Use MTA-STS to declare that all traffic should use TLS? (y/n) "
+    read answer
+    if [ "$answer" != "y" ]; then
+	return
+    fi
+    mta_sts=true
+
+    if ! getent hosts mta-sts.$domain; then
+	echo "Make the following CNAME DNS record for mta-sts.$domain"
+	echo
+	echo "  $host"
+	echo
+	echo "Press Enter to continue"
+	read answer
+    fi
+
+    local web=""
+    if check-web > /dev/null; then
+	if check-web | grep apache > /dev/null; then
+	    web=apache
+	elif check-web | grep nginx > /dev/null; then
+	    web=nginx
+	fi
+    else
+	apt -y install apache2
+	a2enmod ssl
+	systemctl restart apache2
+	web=apache
+    fi
+
+    if [ "$web" = apache ]; then
+	cat <<EOF > /etc/apache2/sites-available/001-mta-sts.conf
+<VirtualHost *:443>
+        ServerName mta-sts.$domain
+        DocumentRoot /var/www/mta-sts
+        SSLCertificateFile /etc/letsencrypt/live/$host/fullchain.pem
+        SSLCertificateKeyFile /etc/letsencrypt/live/$host/privkey.pem
+</VirtualHost>
+EOF
+	cd /etc/apache2/sites-enabled
+	if [ ! -e 001-mta-sts.conf ]; then
+	    ln -s ../sites-available/001-mta-sts.conf 001-mta-sts.conf
+	fi
+    else
+	echo "Unable to determine what web server to use for MTA-STS"
+    fi
+    
+    # Create the STS file.
+    if [ ! -d /var/www/mta-sts/.well-known ]; then
+	mkdir -p /var/www/mta-sts/.well-known
+    fi
+    cat <<EOF > /var/www/mta-sts/.well-known/mta-sts.txt
+version: STSv1
+mode: enforce
+mx: $host
+max_age: 604800
+EOF
+	
+}
+
+
 preinstall
 firewall
 sethost
@@ -266,6 +347,7 @@ echo "Configuring for $host..."
 
 domain=$(echo $host | sed 's/^[^.]*[.]//')
 
+mta-sts
 get-certbot
 exim
 dovecot
