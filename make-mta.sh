@@ -131,7 +131,7 @@ function get-certbot() {
 
 function exim() {
     apt -y install exim4-daemon-heavy clamav spamassassin clamav-daemon\
-	sasl2-bin
+	sasl2-bin bind9
     # Allow authentication of submitted mail via the SASL daemon.
     adduser Debian-exim sasl
     sed -i 's/^START=.*/START=yes/' /etc/default/saslauthd
@@ -210,7 +210,10 @@ EOF
   # accept otherwise
   accept
 EOF
-    
+
+    # For URIBL (etc.) to work, the requests should come from this
+    # host since the free accounts are accounted per IP.
+    echo "dns_server 127.0.0.1" >> /etc/spamassassin/local.cf
     systemctl enable spamassassin.service
     service spamassassin restart
 
