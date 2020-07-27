@@ -217,6 +217,12 @@ EOF
     systemctl enable spamassassin.service
     service spamassassin restart
 
+    # Ensure that we're not being an open DNS server.
+    sed -i \
+	's/listen-on-v6.*/listen-on-v6 { ::1; }; listen-on { 127.0.0.1; };/' \
+	/etc/bind/named.conf.options
+    service named restart
+
     # ClamAV needs to be able to access /var/spool/exim4/scan.
     adduser clamav Debian-exim
     
