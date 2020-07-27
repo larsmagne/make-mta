@@ -2,6 +2,11 @@
 
 set -e
 
+if [ $(whoami) != "root" ]; then
+    echo "You have to be root to run this script"
+    exit
+fi
+
 log=/tmp/dns.txt
 
 if [ -d /etc/exim4 ]; then
