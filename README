@@ -12,3 +12,10 @@ For a background to why this script exists, see:
 
 https://lars.ingebrigtsen.no/2020/03/25/so-you-want-to-run-your-own-mail-server/
 
+The script sets up an MTA with:
+
+* exim4 with STARTTLS and DKIM
+* Dovecot IMAP with TLS
+* ufw firewall and fail2ban
+* SPF, DMARC and MTA-STS
+* Certificates for everything from Let's Encrypt
