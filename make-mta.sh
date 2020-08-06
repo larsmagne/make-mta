@@ -260,12 +260,12 @@ EOF
 
     echo
     echo "Make the following TXT DNS record for $selector._domainkey.$domain"
-    echo -n "  k=rsa; p="
+    echo -n "  v=DKIM1; k=rsa; p="
     grep -v '^-' < "$domain-dkim-public.pem" | tr -d '\n'
     echo
 
     echo "# This DNS BIND-formatted file can be imported into some DNS providers" > $log
-    echo -n "$selector._domainkey.$domain.	1	IN	TXT	\"k=rsa; p=" >> $log
+    echo -n "$selector._domainkey.$domain.	1	IN	TXT	\"v=DKIM1; k=rsa; p=" >> $log
     grep -v '^-' < "$domain-dkim-public.pem" | tr -d '\n' >> $log
     echo "\"" >> $log
 }
