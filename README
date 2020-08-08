@@ -10,7 +10,8 @@ machine at DigitalOcean.
 
 For a background to why this script exists, see:
 
-https://lars.ingebrigtsen.no/2020/03/25/so-you-want-to-run-your-own-mail-server/
+https://lars.ingebrigtsen.no/2020/03/25/so-you-want-to-run-your-own-mail-server/ and
+https://lars.ingebrigtsen.no/2020/07/26/so-you-want-to-run-your-own-mail-server-redux/
 
 The script sets up an MTA with:
 
