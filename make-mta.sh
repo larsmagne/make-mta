@@ -74,6 +74,9 @@ function sethost() {
 	host="$prompthost"
     fi
 }
+function check-service() {
+    service $1 status >/dev/null
+}
 
 function check-web() {
     lsof -i :80 -sTCP:LISTEN
@@ -221,7 +224,11 @@ EOF
     sed -i \
 	's/listen-on-v6.*/listen-on-v6 { ::1; }; listen-on { 127.0.0.1; };/' \
 	/etc/bind/named.conf.options
-    service named restart
+    if check-service named; then
+        service named restart
+    else
+        service bind9 restart
+    fi
 
     # ClamAV needs to be able to access /var/spool/exim4/scan.
     adduser clamav Debian-exim
