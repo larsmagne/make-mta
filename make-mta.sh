@@ -133,8 +133,13 @@ function get-certbot() {
 }
 
 function exim() {
-    apt -y install exim4-daemon-heavy clamav spamassassin clamav-daemon\
-	sasl2-bin bind9
+    echo -n "Run the ClamAV antivirus scanner?  (Requires more than 1GB memory) (y/n) "
+    read do_clamav
+    if [ "$do_clamav" == "y" ]; then
+	apt -y install clamav clamav-daemon
+    fi
+
+    apt -y install exim4-daemon-heavy spamassassin sasl2-bin bind9
     # Allow authentication of submitted mail via the SASL daemon.
     adduser Debian-exim sasl
     sed -i 's/^START=.*/START=yes/' /etc/default/saslauthd
@@ -174,27 +179,29 @@ plain_server:
   server_advertise_condition = ${if eq{$received_port}{587}{${if eq{$tls_in_cipher}{}{no}{yes}}}{${if eq{$received_port}{465}{yes}{no}}}}
 EOF
 
-    # Make exim do virus and spam scanning.
-    sed -i 's/# av_scanner/av_scanner/' \
-	/etc/exim4/conf.d/main/02_exim4-config_options
+    # Make exim do spam scanning.
     sed -i 's/# spamd_address/spamd_address/' \
 	/etc/exim4/conf.d/main/02_exim4-config_options
 
-    # clamav needs about 1GB of memory to run.  If we don't have that,
-    # then don't make exim try to talk to clamav.
-    memory=$(grep MemTotal /proc/meminfo | awk '{print $2}')
-    pref=""
-    if [ "$memory" -gt 1500000 ]; then
-	pref="#"
-	echo "# Commented out because clamav may not be running due to low memory"\
-	     > /etc/exim4/conf.d/acl/45_stop_spam
-    fi
-    cat <<EOF >> /etc/exim4/conf.d/acl/45_stop_spam
+    if [ "$do_clamav" == "y" ]; then
+	sed -i 's/# av_scanner/av_scanner/' \
+	    /etc/exim4/conf.d/main/02_exim4-config_options
+	# clamav needs about 1GB of memory to run.  If we don't have that,
+	# then don't make exim try to talk to clamav.
+	memory=$(grep MemTotal /proc/meminfo | awk '{print $2}')
+	pref=""
+	if [ "$memory" -gt 1500000 ]; then
+	    pref="#"
+	    echo "# Commented out because clamav may not be running due to low memory"\
+		 > /etc/exim4/conf.d/acl/45_stop_spam
+	fi
+	cat <<EOF >> /etc/exim4/conf.d/acl/45_stop_spam
 ${pref}deny
 ${pref}  malware = *
 ${pref}  message = This message was detected as possible malware (\$malware_name).
 
 EOF
+    fi
     
     cat <<"EOF" >> /etc/exim4/conf.d/acl/45_stop_spam
 deny  message = This message scored too many spam points
